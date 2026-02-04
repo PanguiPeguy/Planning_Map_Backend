@@ -1,0 +1,70 @@
+services:
+  # PostgreSQL avec PostGIS
+  postgres:
+    image: postgis/postgis:15-3.3
+    container_name: itineraire-postgres
+    environment:
+      POSTGRES_DB: itineraire_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      PGDATA: /var/lib/postgresql/data/pgdata
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./database:/docker-entrypoint-initdb.d
+    networks:
+      - itineraire-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # pgAdmin pour gérer PostgreSQL (optionnel)
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: itineraire-pgadmin
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@itineraire.com
+      PGADMIN_DEFAULT_PASSWORD: admin
+      PGADMIN_CONFIG_SERVER_MODE: "False"
+    ports:
+      - "5050:80"
+    volumes:
+      - pgadmin_data:/var/lib/pgadmin
+    networks:
+      - itineraire-network
+    depends_on:
+      - postgres
+
+  # Redis pour cache réactif
+  redis:
+    image: redis:7-alpine
+    container_name: itineraire-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - itineraire-network
+    command: redis-server --appendonly yes --maxmemory 512mb --maxmemory-policy allkeys-lru
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+volumes:
+  postgres_data:
+    driver: local
+
+  pgadmin_data:
+    driver: local
+
+  redis_data:
+    driver: local
+
+networks:
+  itineraire-network:
+    driver: bridge

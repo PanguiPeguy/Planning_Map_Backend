@@ -1,0 +1,431 @@
+# ================================================================
+# PLANNING MAP - Configuration Spring Boot WebFlux
+# ================================================================
+# Architecture: Microservices Réactifs
+# Stack: Spring WebFlux + R2DBC + PostgreSQL + PostGIS
+# ================================================================
+
+spring:
+  application:
+    name: planning-map-backend
+
+  # ================================================================
+  # R2DBC - Reactive Database Connection
+  # ================================================================
+  r2dbc:
+    url: r2dbc:postgresql://127.0.0.1:5433/itineraire_db
+    username: postgres
+    password: "postgres"
+    pool:
+      # Pool de connexions réactif optimisé pour haute charge
+      initial-size: 10
+      max-size: 50 # Limité à 50 pour éviter d'épuiser les connexions Postgres (par défaut 100)
+      max-idle-time: 15m
+      max-acquire-time: 5s
+      max-create-connection-time: 10s
+      validation-query: SELECT 1
+      max-life-time: 60m
+
+  # ================================================================
+  # Initialisation BD (Désactivé - géré par migration)
+  # ================================================================
+  sql:
+    init:
+      mode: never # Ne pas exécuter schema.sql automatiquement
+
+  # ================================================================
+  # Jackson - Sérialisation JSON
+  # ================================================================
+  jackson:
+    default-property-inclusion: non_null # Exclut nulls des JSON
+    serialization:
+      write-dates-as-timestamps: false # ISO-8601 format
+      indent-output: false # Compact en prod
+    deserialization:
+      fail-on-unknown-properties: false # Tolérant aux champs inconnus
+    time-zone: Africa/Douala # Timezone Cameroun
+
+  # ================================================================
+  # Redis - Cache Réactif
+  # ================================================================
+  data:
+    redis:
+      host: localhost
+      port: 6379
+      timeout: 2000ms
+      lettuce:
+        pool:
+          max-active: 20 # Connexions max simultanées
+          max-idle: 10 # Connexions idle max
+          min-idle: 5 # Connexions idle min
+          max-wait: 1000ms # Temps d'attente max pour connexion
+        shutdown-timeout: 100ms
+
+  # ================================================================
+  # WebFlux - Configuration Serveur Réactif
+  # ================================================================
+  # ================================================================
+  # WebFlux - Configuration Serveur Réactif
+  # ================================================================
+  webflux:
+    # base-path removed to avoid double mapping with controllers
+
+  # ================================================================
+  # Codec - Limite taille requêtes
+  # ================================================================
+  codec:
+    max-in-memory-size: 10MB # Max upload (images POI)
+
+# ================================================================
+# Server Configuration
+# ================================================================
+server:
+  port: 8080
+
+  # Compression responses (économise bande passante)
+  compression:
+    enabled: true
+    mime-types: application/json,application/xml,text/html,text/xml,text/plain
+    min-response-size: 1024
+
+  # Timeouts
+  netty:
+    connection-timeout: 30s
+    idle-timeout: 60s
+
+  # Headers sécurité
+  error:
+    include-message: always
+    include-binding-errors: always
+    include-stacktrace: never # Jamais en prod !
+    include-exception: false
+
+# ================================================================
+# JWT Configuration
+# ================================================================
+jwt:
+  secret: ${JWT_SECRET:taCleSuperLongueDe512BitsIciChangeMoi1234567890abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789}
+  expiration-ms: 86400000 # 24 heures
+  refresh-expiration-ms: 604800000 # 7 jours
+  issuer: planning-map
+
+# ================================================================
+# CORS - Configuration Frontend
+# ================================================================
+cors:
+  allowed-origins:
+    - http://localhost:3000 # Next.js dev
+    - http://localhost:3001 # Next.js prod preview
+    - https://planning-map.cm # Production
+  allowed-methods:
+    - GET
+    - POST
+    - PUT
+    - DELETE
+    - PATCH
+    - OPTIONS
+  allowed-headers:
+    - Authorization
+    - Content-Type
+    - Accept
+    - Origin
+    - X-Requested-With
+  exposed-headers:
+    - Authorization
+    - X-Total-Count
+  allow-credentials: true
+  max-age: 3600
+
+# ================================================================
+# Logging Configuration
+# ================================================================
+logging:
+  level:
+    root: INFO
+    com.enspy: DEBUG
+    # Spring Framework
+    org.springframework.web: DEBUG
+    org.springframework.security: INFO
+    org.springframework.r2dbc: DEBUG
+    org.springframework.data.r2dbc: DEBUG
+
+    # Notre application
+    com.enspy.tripplanning: DEBUG
+
+    # R2DBC Query Logger (TRÈS utile debug)
+    io.r2dbc.postgresql.QUERY: DEBUG
+    io.r2dbc.postgresql.PARAM: DEBUG
+
+    # Netty (serveur réactif)
+    reactor.netty: INFO
+
+  # Pattern logs
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} - %msg%n"
+    file: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
+
+  # Fichier logs
+  file:
+    name: logs/planning-map.log
+    max-size: 10MB
+    max-history: 30
+    total-size-cap: 1GB
+
+# ================================================================
+# SpringDoc OpenAPI (Swagger UI) pour WebFlux
+# ================================================================
+springdoc:
+  # API Documentation JSON
+  api-docs:
+    path: /v3/api-docs
+    enabled: true
+
+  # Swagger UI Interface
+  swagger-ui:
+    path: /swagger-ui.html
+    enabled: true
+    config-url: /v3/api-docs/swagger-config
+    url: /v3/api-docs
+    display-request-duration: true
+    doc-expansion: none
+    operations-sorter: method
+    tags-sorter: alpha
+    try-it-out-enabled: true
+    filter: true
+
+  # Spécifique WebFlux (CRUCIAL)
+  webjars:
+    prefix: /webjars
+
+  # Cache et performance
+  cache:
+    disabled: true # Pour le développement
+
+  # Groupes d'API (optionnel)
+  group-configs:
+    - group: poi
+      display-name: Points d'Intérêt API
+      paths-to-match: /api/v1/pois/**
+    - group: auth
+      display-name: Authentification API
+      paths-to-match: /api/v1/auth/**
+
+# ================================================================
+# Actuator - Monitoring & Health Checks
+# ================================================================
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus,loggers
+      base-path: /actuator
+
+  endpoint:
+    health:
+      show-details: always
+      probes:
+        enabled: true # Kubernetes readiness/liveness
+
+  # Métriques Prometheus
+  prometheus:
+    metrics:
+      export:
+        enabled: true
+  observations:
+    key-values:
+      application: ${spring.application.name}
+      environment: ${ENVIRONMENT:dev}
+
+  # Info endpoint
+  info:
+    env:
+      enabled: true
+    java:
+      enabled: true
+    os:
+      enabled: true
+
+# ================================================================
+# Application Custom Properties
+# ================================================================
+application:
+  # Sécurité
+  security:
+    bcrypt-strength: 10 # Rounds BCrypt (10 = bon compromis perf/sécurité)
+    max-login-attempts: 5
+    lockout-duration-minutes: 15
+
+  # Upload fichiers
+  upload:
+    max-file-size: 5MB
+    allowed-extensions:
+      - jpg
+      - jpeg
+      - png
+      - webp
+    storage-path: ${UPLOAD_PATH:./uploads}
+
+  # Email (configuration future)
+  email:
+    from: noreply@planning-map.cm
+    enabled: false # Désactivé pour l'instant
+
+  # Pagination
+  pagination:
+    default-page-size: 20
+    max-page-size: 50 # Réduit de 100 pour limiter charge mémoire
+
+  # Cache
+  cache:
+    ttl-seconds: 3600 # 1 heure
+    max-entries: 10000
+
+  # Routing Engine
+  routing:
+    algorithm: ASTAR # ASTAR ou CH
+    max-distance-km: 1000
+    cache-duration-hours: 24
+
+  # Rate Limiting
+  rate-limit:
+    enabled: true
+    requests-per-minute: 60
+    burst-capacity: 100
+
+
+# ================================================================
+# Profils Spring (Dev / Test / Prod)
+# ================================================================
+---
+# PROFIL DÉVELOPPEMENT
+spring:
+  config:
+    activate:
+      on-profile: dev
+
+  r2dbc:
+    url: r2dbc:postgresql://localhost:5432/planning_map_db
+
+logging:
+  level:
+    com.enspy.tripplanning: DEBUG
+
+server:
+  error:
+    include-stacktrace: on_param # ?trace=true en dev
+
+---
+# PROFIL TEST
+spring:
+  config:
+    activate:
+      on-profile: test
+
+  r2dbc:
+    url: r2dbc:postgresql://localhost:5432/planning_map_test
+
+logging:
+  level:
+    root: WARN
+    com.enspy.tripplanning: INFO
+
+---
+# PROFIL PRODUCTION
+spring:
+  config:
+    activate:
+      on-profile: prod
+
+  r2dbc:
+    url: ${DATABASE_URL} # Variable environnement
+    username: ${DATABASE_USER}
+    password: ${DATABASE_PASSWORD}
+    pool:
+      max-size: 100 # Plus de connexions en prod
+
+jwt:
+  secret: ${JWT_SECRET} # OBLIGATOIRE depuis env !
+
+logging:
+  level:
+    root: WARN
+    com.enspy.tripplanning: INFO
+
+  file:
+    name: /var/log/planning-map/application.log
+
+server:
+  error:
+    include-stacktrace: never
+    include-message: never
+
+# ================================================================
+# 📚 CONCEPTS PÉDAGOGIQUES
+# ================================================================
+#
+# 1️⃣ R2DBC vs JDBC
+# -----------------
+# R2DBC = Reactive Database Connectivity
+# - Non-bloquant (async/await)
+# - Scalabilité x10 (même RAM)
+# - Parfait WebFlux
+#
+# JDBC classique:
+# Thread par requête → 1000 threads = 1GB RAM
+#
+# R2DBC:
+# Event loop → 1000 requêtes = 100MB RAM
+#
+#
+# 2️⃣ Pool Connexions
+# ------------------
+# initial-size: Connexions au démarrage
+# max-size: Maximum simultané
+# max-idle-time: Fermeture connexion inactive
+#
+# Trop petit = attentes
+# Trop grand = RAM gaspillée
+#
+#
+# 3️⃣ JWT Expiration
+# -----------------
+# Access token: 24h (court)
+# Refresh token: 7 jours (long)
+#
+# Pourquoi 2 tokens ?
+# - Access: dans Authorization header
+# - Refresh: stocké HttpOnly cookie (sécurisé)
+#
+# Si access expiré → refresh génère nouveau
+#
+#
+# 4️⃣ CORS Configuration
+# ---------------------
+# Obligatoire pour SPA (Next.js)
+#
+# Sans CORS:
+# Browser bloque requêtes cross-origin
+#
+# Avec CORS:
+# Server autorise origines spécifiques
+#
+#
+# 5️⃣ Profils Spring
+# -----------------
+# Dev: logs verbeux, stacktraces
+# Test: base données séparée
+# Prod: logs minimaux, secrets env
+#
+# Activation:
+# java -jar app.jar --spring.profiles.active=prod
+#
+#
+# 6️⃣ Actuator Endpoints
+# ---------------------
+# /actuator/health → État application
+# /actuator/metrics → Métriques perf
+# /actuator/prometheus → Export Grafana
+#
+# Kubernetes utilise health checks !
+#
+# ================================================================
