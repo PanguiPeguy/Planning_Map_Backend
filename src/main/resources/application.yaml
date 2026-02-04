@@ -13,9 +13,9 @@ spring:
   # R2DBC - Reactive Database Connection
   # ================================================================
   r2dbc:
-    url: r2dbc:postgresql://127.0.0.1:5433/itineraire_db
-    username: postgres
-    password: "postgres"
+    url: r2dbc:postgresql://neondb_owner:npg_OVWE2jLoTH4k@ep-little-wave-a8qhe3e2-pooler.eastus2.azure.neon.tech/neondb?sslmode=require&channel_binding=require
+    username: neondb_owner
+    password: npg_OVWE2jLoTH4k
     pool:
       # Pool de connexions réactif optimisé pour haute charge
       initial-size: 10
@@ -116,7 +116,7 @@ cors:
   allowed-origins:
     - http://localhost:3000 # Next.js dev
     - http://localhost:3001 # Next.js prod preview
-    - https://planning-map.cm # Production
+    - https://planning-map-frontend.vercel.app # Production
   allowed-methods:
     - GET
     - POST
@@ -429,3 +429,10 @@ server:
 # Kubernetes utilise health checks !
 #
 # ================================================================
+
+
+# ================================================================
+# OSRM Configuration
+# ================================================================
+osrm:
+  url: http://router.project-osrm.org

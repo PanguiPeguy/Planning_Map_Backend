@@ -11,6 +11,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
+import org.springframework.data.geo.Point;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -40,6 +41,7 @@ public class RouteCalculatorService {
     private final RoadEdgeRepository edgeRepository;
     private final AStarService aStarService;
     private final com.enspy.tripplanning.poi.repository.PoiRepository poiRepository;
+    private final OsrmRoutingService osrmRoutingService;
 
     /**
      * Calcule un itinéraire à partir d'une requête utilisateur.
@@ -63,27 +65,56 @@ public class RouteCalculatorService {
     }
 
     private Mono<MultiRouteResponse> performRouteCalculation(RouteRequest request) {
-        // ÉTAPE 1: Déterminer la zone de recherche (Bounding Box) pour le sous-graphe
-        return getBoundingBox(request)
-                .flatMap(bbox -> aStarService.fetchSubgraph(bbox[0], bbox[1], bbox[2], bbox[3]))
-                .flatMap(subgraph -> {
-                    // ÉTAPE 2: Calculer les deux routes en parallèle en utilisant le sous-graphe
-                    Mono<RouteResponse> optimalRouteMono = calculateSimpleRoute(request, subgraph);
-                    Mono<RouteResponse> customRouteMono = calculateCustomRoute(request, subgraph);
+        // Points de départ et arrivée
+        // Note: Point(x, y) = Point(longitude, latitude)
+        org.springframework.data.geo.Point start = new org.springframework.data.geo.Point(request.getStartLongitude(),
+                request.getStartLatitude());
+        org.springframework.data.geo.Point end = new org.springframework.data.geo.Point(request.getEndLongitude(),
+                request.getEndLatitude());
 
-                    return Mono.zip(customRouteMono, optimalRouteMono)
-                            .map(tuple -> MultiRouteResponse.builder()
-                                    .found(tuple.getT1().getFound() || tuple.getT2().getFound())
-                                    .customRoute(tuple.getT1())
-                                    .optimalRoute(tuple.getT2())
-                                    .build());
-                })
-                .map(response -> response)
+        // Récupérer les coordonnées des POIs pour la route personnalisée
+        Mono<List<org.springframework.data.geo.Point>> waypointsMono;
+
+        if (request.getWaypointPoiIds() != null && !request.getWaypointPoiIds().isEmpty()) {
+            waypointsMono = Flux.fromIterable(request.getWaypointPoiIds())
+                    .flatMap(poiId -> poiRepository.findById(poiId))
+                    .map(poi -> new org.springframework.data.geo.Point(
+                            poi.getLongitude() != null ? poi.getLongitude().doubleValue() : 0.0,
+                            poi.getLatitude() != null ? poi.getLatitude().doubleValue() : 0.0))
+                    .collectList();
+        } else {
+            waypointsMono = Mono.just(java.util.Collections.emptyList());
+        }
+
+        return waypointsMono.flatMap(waypoints -> {
+            // 1. Calcul Route OPTIMALE (Directe sans waypoints)
+            log.info("🟢 Appel OSRM pour route OPTIMALE (Directe)");
+            Mono<RouteResponse> optimalRouteMono = osrmRoutingService.calculateRoute(start, end, null);
+
+            // 2. Calcul Route PERSONNALISÉE (Avec waypoints)
+            log.info("🔵 Appel OSRM pour route PERSONNALISÉE avec {} waypoints", waypoints.size());
+            // Si pas de waypoints, la route personnalisée est techniquement identique à
+            // l'optimale
+            // mais on fait l'appel pour avoir la cohérence
+            Mono<RouteResponse> customRouteMono = osrmRoutingService.calculateRoute(start, end, waypoints);
+
+            return Mono.zip(customRouteMono, optimalRouteMono)
+                    .map(tuple -> {
+                        RouteResponse custom = tuple.getT1();
+                        RouteResponse optimal = tuple.getT2();
+
+                        return MultiRouteResponse.builder()
+                                .found(custom.getFound() || optimal.getFound())
+                                .customRoute(custom)
+                                .optimalRoute(optimal)
+                                .build();
+                    });
+        })
                 .onErrorResume(error -> {
-                    log.error("Erreur lors du calcul multi-route", error);
+                    log.error("Erreur lors du calcul OSRM", error);
                     return Mono.just(MultiRouteResponse.builder()
                             .found(false)
-                            .errorMessage("Erreur: " + error.getMessage())
+                            .errorMessage("Erreur OSRM: " + error.getMessage())
                             .build());
                 });
     }
@@ -440,7 +471,7 @@ public class RouteCalculatorService {
                     .edgeId(edge.getEdgeId())
                     .streetName(edge.getStreetName())
                     .roadType(edge.getRoadType())
-                    .distanceKm(edge.getDistanceMeters() / 1000.0)
+                    .distanceKm(edge.getDistanceMetersOrCalculate() / 1000.0)
                     .timeSeconds(edge.getTravelTimeSeconds())
                     .maxSpeedKmh(edge.getMaxSpeedKmh())
                     .startPoint(buildRoutePoint(startNode, "segment_start"))
@@ -463,8 +494,8 @@ public class RouteCalculatorService {
      */
     private String buildInstruction(RoadEdge edge, int segmentNumber) {
         String streetName = edge.getStreetName() != null ? edge.getStreetName() : "la route";
-        double distanceKm = edge.getDistanceMeters() / 1000.0;
-        int timeMin = edge.getTravelTimeSeconds() / 60;
+        double distanceKm = edge.getDistanceMetersOrCalculate() / 1000.0;
+        int timeMin = edge.getTravelTimeSeconds() != null ? edge.getTravelTimeSeconds() / 60 : 0;
 
         return String.format(
                 "%d. Suivez %s pendant %.1f km (%d min)",

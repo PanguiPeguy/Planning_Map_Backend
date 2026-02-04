@@ -127,8 +127,8 @@ public class Route {
         }
 
         double total = edges.stream()
-            .mapToDouble(edge -> edge.getDistanceMeters() != null ? edge.getDistanceMeters() : 0.0)
-            .sum();
+                .mapToDouble(RoadEdge::getDistanceMetersOrCalculate)
+                .sum();
 
         return total / 1000.0; // Conversion mètres → kilomètres
     }
@@ -144,8 +144,8 @@ public class Route {
         }
 
         return edges.stream()
-            .mapToInt(edge -> edge.getTravelTimeSeconds() != null ? edge.getTravelTimeSeconds() : 0)
-            .sum();
+                .mapToInt(edge -> edge.getTravelTimeSeconds() != null ? edge.getTravelTimeSeconds() : 0)
+                .sum();
     }
 
     /**
@@ -201,12 +201,11 @@ public class Route {
         for (int i = 0; i < edges.size(); i++) {
             RoadEdge edge = edges.get(i);
             String instruction = String.format(
-                "%d. Suivez %s pendant %.2f km (%s)",
-                i + 1,
-                edge.getStreetName() != null ? edge.getStreetName() : "la route",
-                edge.getDistanceMeters() / 1000.0,
-                formatTime(edge.getTravelTimeSeconds())
-            );
+                    "%d. Suivez %s pendant %.2f km (%s)",
+                    i + 1,
+                    edge.getStreetName() != null ? edge.getStreetName() : "la route",
+                    edge.getDistanceMetersOrCalculate() / 1000.0,
+                    formatTime(edge.getTravelTimeSeconds()));
             instructions.add(instruction);
         }
 
@@ -237,9 +236,9 @@ public class Route {
      * @return true si la route contient au moins 2 nœuds
      */
     public boolean isValid() {
-        return found != null && found && 
-               nodes != null && nodes.size() >= 2 &&
-               edges != null && edges.size() >= 1;
+        return found != null && found &&
+                nodes != null && nodes.size() >= 2 &&
+                edges != null && edges.size() >= 1;
     }
 
     @Override
@@ -249,13 +248,12 @@ public class Route {
         }
 
         return String.format(
-            "Route[%s → %s, distance=%.2f km, time=%s, segments=%d, explored=%d nodes]",
-            startNode != null ? startNode.getName() : "?",
-            endNode != null ? endNode.getName() : "?",
-            totalDistanceKm,
-            getFormattedTime(),
-            getSegmentCount(),
-            nodesExplored
-        );
+                "Route[%s → %s, distance=%.2f km, time=%s, segments=%d, explored=%d nodes]",
+                startNode != null ? startNode.getName() : "?",
+                endNode != null ? endNode.getName() : "?",
+                totalDistanceKm,
+                getFormattedTime(),
+                getSegmentCount(),
+                nodesExplored);
     }
 }

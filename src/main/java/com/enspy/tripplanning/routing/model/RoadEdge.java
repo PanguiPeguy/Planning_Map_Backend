@@ -158,6 +158,22 @@ public class RoadEdge {
     // ============================================
 
     /**
+     * Retourne la distance en mètres de manière sécurisée.
+     * Si distance_meters est null, calcule à partir de distance_km.
+     * 
+     * @return Distance en mètres (jamais null)
+     */
+    public double getDistanceMetersOrCalculate() {
+        if (distanceMeters != null) {
+            return distanceMeters;
+        }
+        if (distanceKm != null) {
+            return distanceKm * 1000.0;
+        }
+        return 0.0;
+    }
+
+    /**
      * Calcule le temps de parcours théorique en secondes
      * 
      * Formule: temps = (distance_km / vitesse_kmh) × 3600
@@ -165,11 +181,12 @@ public class RoadEdge {
      * @return Temps en secondes
      */
     public int calculateTravelTime() {
-        if (distanceMeters == null || maxSpeedKmh == null || maxSpeedKmh == 0) {
+        double distMeters = getDistanceMetersOrCalculate();
+        if (distMeters == 0 || maxSpeedKmh == null || maxSpeedKmh == 0) {
             return 0;
         }
 
-        double distanceKm = distanceMeters / 1000.0;
+        double distanceKm = distMeters / 1000.0;
         return (int) Math.ceil((distanceKm / maxSpeedKmh) * 3600);
     }
 

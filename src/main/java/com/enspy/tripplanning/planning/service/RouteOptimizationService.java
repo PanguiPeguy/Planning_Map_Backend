@@ -163,8 +163,8 @@ public class RouteOptimizationService {
                         item.setOptimalRouteGeom(null);
                     }
 
-                    // Update custom route if available and no itinerary is assigned
-                    if (item.getItineraryId() == null && hasCustomRoute) {
+                    // Update custom route if available (always save it first)
+                    if (hasCustomRoute) {
                         var custom = response.getCustomRoute();
                         item.setRouteGeom(custom.getGeometryEncoded());
                         if (custom.getTotalDistanceKm() != null) {
@@ -175,8 +175,8 @@ public class RouteOptimizationService {
                         }
                         log.debug("Custom route saved for item {} ({} to {})", item.getId(),
                                 item.getOriginCity(), item.getDestinationCity());
-                    } else if (item.getItineraryId() == null && !hasCustomRoute) {
-                        // Clear custom route if invalid and no itinerary assigned
+                    } else {
+                        // Clear custom route if invalid
                         item.setRouteGeom(null);
                         item.setDistanceMeters(null);
                         item.setTravelTimeSeconds(null);
@@ -194,7 +194,7 @@ public class RouteOptimizationService {
                     }
 
                     // 2. Si un itinéraire enregistré est sélectionné, il surcharge la route
-                    // personnalisée
+                    // personnalisée SEULEMENT s'il a une géométrie valide
                     if (item.getItineraryId() != null) {
                         return itineraryRepository.findById(item.getItineraryId())
                                 .map(itinerary -> {
@@ -204,11 +204,12 @@ public class RouteOptimizationService {
                                         item.setDistanceMeters(itinerary.getDistanceMeters());
                                         item.setTravelTimeSeconds(itinerary.getDurationSeconds());
                                         item.setStatus("CALCULATED");
-                                        log.debug("Route for item {} overridden by itinerary {}", item.getId(),
-                                                itinerary.getId());
+                                        log.info("Route for item {} overridden by itinerary {} (has valid geometry)",
+                                                item.getId(), itinerary.getId());
                                     } else {
-                                        log.warn("Itinerary {} assigned to item {} has no geometry!", itinerary.getId(),
-                                                item.getId());
+                                        log.warn(
+                                                "Itinerary {} assigned to item {} has no geometry - keeping custom route!",
+                                                itinerary.getId(), item.getId());
                                     }
                                     return item;
                                 })
