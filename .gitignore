@@ -1,4 +1,4 @@
-/backend/target
-/backend/logs
-/backend/uploads
-/backend/report
+/target
+/logs
+/uploads
+/report
