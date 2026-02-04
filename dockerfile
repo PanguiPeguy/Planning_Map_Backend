@@ -1,30 +1,28 @@
 # Dockerfile
-# Étape 1: Build avec Maven
-FROM maven:3.9-eclipse-temurin-17 AS builder
+FROM eclipse-temurin:17-jre-alpine as base
 
-WORKDIR /app
+# Installation de PostgreSQL et PostGIS
+RUN apk add --no-cache \
+    postgresql15 \
+    postgresql15-contrib \
+    postgis \
+    postgresql15-postgis
 
-# Copier les fichiers de configuration Maven
-COPY pom.xml .
-COPY src ./src
+# Créer répertoire pour données PostgreSQL
+RUN mkdir -p /var/lib/postgresql/data && \
+    chown -R postgres:postgres /var/lib/postgresql
 
-# Build l'application
-RUN mvn clean package -DskipTests
+# Copier les scripts d'initialisation
+COPY database/init-scripts/ /docker-entrypoint-initdb.d/
+RUN chmod +x /docker-entrypoint-initdb.d/*.sh
 
-# Étape 2: Runtime
-FROM eclipse-temurin:17-jre-alpine
+# Copier l'application Spring Boot
+COPY --from=builder /app/target/*.jar /app/app.jar
 
-WORKDIR /app
+# Script de démarrage qui lance PostgreSQL puis Spring Boot
+COPY start-all.sh /start-all.sh
+RUN chmod +x /start-all.sh
 
-# Copier le JAR depuis l'étape de build
-COPY --from=builder /app/target/*.jar app.jar
+EXPOSE 5432 8080
 
-# Créer un utilisateur non-root pour la sécurité
-RUN addgroup -S spring && adduser -S spring -G spring
-USER spring:spring
-
-# Port d'exposition
-EXPOSE 8080
-
-# Commande de démarrage
-ENTRYPOINT ["java", "-jar", "app.jar"]
+CMD ["/start-all.sh"]

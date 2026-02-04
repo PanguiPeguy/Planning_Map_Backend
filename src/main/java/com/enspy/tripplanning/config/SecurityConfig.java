@@ -343,10 +343,10 @@ public class SecurityConfig {
 
                 // Origines autorisées
                 config.setAllowedOrigins(List.of(
-                                "http://localhost:3000", // Next.js dev
-                                "http://localhost:3001", // Next.js prod preview
-                                "https://planning-map.cm", // Production
-                                "https://www.planning-map.cm" // Production www
+                                "https://planning-map-frontend.vercel.app", // Next.js dev
+                                "https://planning-map-frontend.vercel.app", // Next.js prod preview
+                                "https://planning-map-frontend.vercel.app", // Production
+                                "https://planning-map-frontend.vercel.app" // Production www
                 ));
 
                 // Méthodes HTTP autorisées

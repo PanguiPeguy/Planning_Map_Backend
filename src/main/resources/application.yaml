@@ -114,8 +114,8 @@ jwt:
 # ================================================================
 cors:
   allowed-origins:
-    - http://localhost:3000 # Next.js dev
-    - http://localhost:3001 # Next.js prod preview
+    - https://planning-map-frontend.vercel.app # Next.js dev
+    - https://planning-map-frontend.vercel.app # Next.js prod preview
     - https://planning-map-frontend.vercel.app # Production
   allowed-methods:
     - GET
