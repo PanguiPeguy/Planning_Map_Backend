@@ -13,9 +13,9 @@ spring:
   # R2DBC - Reactive Database Connection
   # ================================================================
   r2dbc:
-    url: r2dbc:postgresql://neondb_owner:npg_OVWE2jLoTH4k@ep-little-wave-a8qhe3e2-pooler.eastus2.azure.neon.tech/neondb?sslmode=require&channel_binding=require
+    url: r2dbc:postgresql://neondb_owner:npg_ZtEXyK83DsHl@ep-icy-lab-a4oyly5v-pooler.us-east-1.aws.neon.tech/neondb?sslmode=require&options=endpoint%3Dep-icy-lab-a4oyly5v-pooler
     username: neondb_owner
-    password: npg_OVWE2jLoTH4k
+    password: npg_ZtEXyK83DsHl
     pool:
       # Pool de connexions réactif optimisé pour haute charge
       initial-size: 10
@@ -429,7 +429,6 @@ server:
 # Kubernetes utilise health checks !
 #
 # ================================================================
-
 
 # ================================================================
 # OSRM Configuration

@@ -133,8 +133,8 @@ public class SecurityConfig {
                                 .authorizeExchange(auth -> auth
                                                 // ---- ROUTES PUBLIQUES (accessible sans auth) ----
 
-                                                // Authentification
-                                                .pathMatchers("/api/v1/auth/**").permitAll()
+                                                // Authentification (autoriser les deux formats)
+                                                .pathMatchers("/api/v1/auth/**", "/auth/**").permitAll()
 
                                                 // Documentation API (support both root and /api/v1 prefixed paths)
                                                 .pathMatchers("/swagger-ui/**", "/v3/api-docs/**", "/webjars/**",
@@ -145,8 +145,9 @@ public class SecurityConfig {
                                                                 "/api/v1/swagger-ui.html")
                                                 .permitAll()
 
-                                                // Actuator (monitoring)
-                                                .pathMatchers("/actuator/health", "/actuator/info").permitAll()
+                                                // Actuator & Health (indispensable pour Render)
+                                                .pathMatchers("/actuator/health", "/actuator/info", "/health")
+                                                .permitAll()
 
                                                 // Routing (Temporairement public pour test de performance)
                                                 .pathMatchers("/api/v1/routing/**").authenticated()
@@ -239,6 +240,7 @@ public class SecurityConfig {
                         String path = exchange.getRequest().getPath().value();
                         // Exclusions
                         if (path.startsWith("/api/v1/auth/") ||
+                                        path.startsWith("/auth/") ||
                                         path.startsWith("/api/v1/swagger-ui") ||
                                         path.startsWith("/api/v1/v3/api-docs") ||
                                         path.startsWith("/api/v1/webjars") ||
@@ -247,7 +249,9 @@ public class SecurityConfig {
                                         path.startsWith("/webjars") ||
                                         path.equals("/swagger-ui.html") ||
                                         path.equals("/api/v1/swagger-ui.html") ||
-                                        path.startsWith("/uploads/")) {
+                                        path.startsWith("/uploads/") ||
+                                        path.equals("/health") ||
+                                        path.startsWith("/actuator/")) {
                                 return org.springframework.security.web.server.util.matcher.ServerWebExchangeMatcher.MatchResult
                                                 .notMatch();
                         }
