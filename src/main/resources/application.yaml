@@ -342,9 +342,9 @@ spring:
       - org.springframework.boot.autoconfigure.data.redis.RedisReactiveAutoConfiguration
 
   r2dbc:
-    url: ${DATABASE_URL} # Variable environnement
-    username: ${DATABASE_USER}
-    password: ${DATABASE_PASSWORD}
+    url: ${DATABASE_URL:r2dbc:postgresql://neondb_owner:npg_ZtEXyK83DsHl@ep-icy-lab-a4oyly5v-pooler.us-east-1.aws.neon.tech/neondb?sslmode=require&options=endpoint%3Dep-icy-lab-a4oyly5v-pooler}
+    username: ${DATABASE_USER:neondb_owner}
+    password: ${DATABASE_PASSWORD:npg_ZtEXyK83DsHl}
     pool:
       max-size: 100 # Plus de connexions en prod
 
