@@ -28,9 +28,14 @@ public class R2dbcConfig extends AbstractR2dbcConfiguration {
     public ConnectionFactory connectionFactory() {
         String finalUrl = url;
 
-        // Detect mismatch between URL and properties if needed, but primarily trust the
-        // resolved URL
-        // Append missing options for NeonDB
+        // Fix Render's "postgres://" prefix to "r2dbc:postgresql://"
+        if (finalUrl.startsWith("postgres://")) {
+            finalUrl = finalUrl.replace("postgres://", "r2dbc:postgresql://");
+        } else if (finalUrl.startsWith("postgresql://")) {
+            finalUrl = finalUrl.replace("postgresql://", "r2dbc:postgresql://");
+        }
+
+        // Append missing options for NeonDB SNI
         if (finalUrl.contains("neon.tech") && !finalUrl.contains("options=endpoint")) {
             log.warn("Detected NeonDB URL without SNI options. Appending fix...");
             String separator = finalUrl.contains("?") ? "&" : "?";
