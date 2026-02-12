@@ -21,7 +21,7 @@ import com.enspy.tripplanning.authentification.service.UserService;
 import reactor.core.publisher.Mono;
 
 @RestController
-@RequestMapping("/api/v1/auth")
+@RequestMapping({ "/api/v1/auth" })
 @Tag(name = "Auth", description = "Endpoints d'authentification et d'inscription")
 @RequiredArgsConstructor
 @Validated

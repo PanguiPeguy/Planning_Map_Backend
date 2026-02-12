@@ -46,20 +46,20 @@ spring:
     time-zone: Africa/Douala # Timezone Cameroun
 
   # ================================================================
-  # Redis - Cache Réactif
+  # Redis - Cache Réactif (DÉSACTIVÉ EN PROD - pas disponible sur Render gratuit)
   # ================================================================
-  data:
-    redis:
-      host: localhost
-      port: 6379
-      timeout: 2000ms
-      lettuce:
-        pool:
-          max-active: 20 # Connexions max simultanées
-          max-idle: 10 # Connexions idle max
-          min-idle: 5 # Connexions idle min
-          max-wait: 1000ms # Temps d'attente max pour connexion
-        shutdown-timeout: 100ms
+  # data:
+  #   redis:
+  #     host: localhost
+  #     port: 6379
+  #     timeout: 2000ms
+  #     lettuce:
+  #       pool:
+  #         max-active: 20 # Connexions max simultanées
+  #         max-idle: 10 # Connexions idle max
+  #         min-idle: 5 # Connexions idle min
+  #         max-wait: 1000ms # Temps d'attente max pour connexion
+  #       shutdown-timeout: 100ms
 
   # ================================================================
   # WebFlux - Configuration Serveur Réactif
@@ -335,6 +335,11 @@ spring:
   config:
     activate:
       on-profile: prod
+
+  autoconfigure:
+    exclude:
+      - org.springframework.boot.autoconfigure.data.redis.RedisAutoConfiguration
+      - org.springframework.boot.autoconfigure.data.redis.RedisReactiveAutoConfiguration
 
   r2dbc:
     url: ${DATABASE_URL} # Variable environnement
