@@ -20,6 +20,7 @@ import org.springframework.data.redis.serializer.StringRedisSerializer;
  * @version 1.0
  */
 @Configuration
+@org.springframework.boot.autoconfigure.condition.ConditionalOnProperty(name = "spring.data.redis.host")
 public class RedisConfig {
 
     /**

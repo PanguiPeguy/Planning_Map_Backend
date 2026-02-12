@@ -1,6 +1,5 @@
 package com.enspy.tripplanning.cache;
 
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.ReactiveRedisTemplate;
 import org.springframework.stereotype.Service;
@@ -22,10 +21,17 @@ import java.time.Duration;
  */
 @Slf4j
 @Service
-@RequiredArgsConstructor
 public class CacheService {
 
     private final ReactiveRedisTemplate<String, Object> redisTemplate;
+
+    public CacheService(
+            @org.springframework.beans.factory.annotation.Autowired(required = false) ReactiveRedisTemplate<String, Object> redisTemplate) {
+        this.redisTemplate = redisTemplate;
+        if (this.redisTemplate == null) {
+            log.warn("Redis disabled: Cache service will run in no-op mode.");
+        }
+    }
 
     // Préfixes pour les clés de cache
     public static final String POI_PREFIX = "poi:";
@@ -47,6 +53,9 @@ public class CacheService {
      * @return Mono avec la valeur ou Mono.empty() si absent
      */
     public <T> Mono<T> get(String key, Class<T> type) {
+        if (redisTemplate == null)
+            return Mono.empty();
+
         return redisTemplate.opsForValue()
                 .get(key)
                 .cast(type)
@@ -64,10 +73,13 @@ public class CacheService {
      * @return Mono<Boolean> true si succès
      */
     public Mono<Boolean> set(String key, Object value, Duration ttl) {
+        if (redisTemplate == null)
+            return Mono.just(false);
+
         return redisTemplate.opsForValue()
                 .set(key, value, ttl)
                 .doOnSuccess(success -> {
-                    if (success) {
+                    if (Boolean.TRUE.equals(success)) {
                         log.debug("Cache SET: {} (TTL: {})", key, ttl);
                     } else {
                         log.warn("Cache SET failed: {}", key);
@@ -84,6 +96,9 @@ public class CacheService {
      * @return Mono<Boolean> true si la clé existait
      */
     public Mono<Boolean> delete(String key) {
+        if (redisTemplate == null)
+            return Mono.just(false);
+
         return redisTemplate.delete(key)
                 .map(count -> count > 0)
                 .doOnNext(deleted -> {
@@ -102,6 +117,9 @@ public class CacheService {
      * @return Mono<Long> nombre de clés supprimées
      */
     public Mono<Long> deletePattern(String pattern) {
+        if (redisTemplate == null)
+            return Mono.just(0L);
+
         return redisTemplate.keys(pattern)
                 .flatMap(redisTemplate::delete)
                 .reduce(0L, Long::sum)
@@ -117,6 +135,9 @@ public class CacheService {
      * @return Mono<Boolean> true si la clé existe
      */
     public Mono<Boolean> exists(String key) {
+        if (redisTemplate == null)
+            return Mono.just(false);
+
         return redisTemplate.hasKey(key)
                 .doOnError(error -> log.error("Cache EXISTS error for key {}: {}", key, error.getMessage()))
                 .onErrorReturn(false);
